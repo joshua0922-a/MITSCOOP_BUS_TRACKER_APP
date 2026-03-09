@@ -1,4 +1,4 @@
-const api = ""; // leave blank if same server
+const api = "https://mitscoop-backend.vercel.app"; // leave blank if same server
 
 /* =============================== LOAD BUSES =============================== */
 async function loadBuses() {
