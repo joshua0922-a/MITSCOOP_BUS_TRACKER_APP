@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MITSCOOP Fleet Tracker</title>
+<link rel="stylesheet" href="style.css">
+<style>
+/* Basic modal and table styling for self-contained example */
+.modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; }
+.modal-content { background:#fff; padding:20px; border-radius:5px; width:400px; max-width:90%; }
+.close { float:right; cursor:pointer; }
+.table-wrapper { overflow-x:auto; }
+button { margin:5px 0; padding:5px 10px; cursor:pointer; }
+.btn.primary { background:#007bff; color:#fff; border:none; border-radius:3px; }
+.btn.success { background:#28a745; color:#fff; border:none; border-radius:3px; }
+.btn.secondary { background:#6c757d; color:#fff; border:none; border-radius:3px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-container">
+    <h1>MITSCOOP Fleet Operations Dashboard</h1>
+  </div>
+  <div class="stats">
+    <div class="stat"><span>Total Buses</span><h2 id="totalBuses">0</h2></div>
+    <div class="stat"><span>Active</span><h2 id="active">0</h2></div>
+    <div class="stat"><span>On Route</span><h2 id="onRoute">0</h2></div>
+    <div class="stat"><span>In Terminal</span><h2 id="inTerminal">0</h2></div>
+    <div class="stat"><span>Maintenance</span><h2 id="maintenance">0</h2></div>
+  </div>
+</header>
+
+<main class="main-container">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- ADD BUS -->
+    <section class="panel">
+      <h2>Add Bus</h2>
+      <div class="form-container">
+        <label>Bus Number</label>
+        <input id="bus_number" placeholder="e.g. 233">
+        <label>Plate Number</label>
+        <input id="plate" placeholder="e.g. ABC123">
+        <label>Route</label>
+        <input id="route" placeholder="e.g. Tagbak">
+        <label>Driver</label>
+        <input id="driver">
+        <label>Conductor</label>
+        <input id="conductor">
+        <label>Status</label>
+        <select id="status">
+          <option value="Active">Active</option>
+          <option value="In Terminal">In Terminal</option>
+          <option value="On Route">On Route</option>
+          <option value="Maintenance">Maintenance</option>
+        </select>
+      </div>
+      <button class="btn primary" onclick="addBus()">Add Bus</button>
+    </section>
+
+    <!-- BUS LOG -->
+    <section class="panel">
+      <h2>Bus Log (IN / OUT)</h2>
+      <div class="form-container">
+        <label>Bus Number</label>
+        <input id="log_bus">
+        <label>Action</label>
+        <select id="action">
+          <option value="IN">IN</option>
+          <option value="OUT">OUT</option>
+        </select>
+        <label>Remarks</label>
+        <input id="remarks">
+      </div>
+      <button class="btn success" onclick="addLog()">Save Log</button>
+    </section>
+
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <!-- SEARCH -->
+    <section class="panel">
+      <h2>Search Bus</h2>
+      <input id="searchBus" placeholder="Search bus number..." onkeyup="searchBus()"/>
+    </section>
+
+    <!-- BUS FLEET TABLE -->
+    <section class="panel">
+      <h2>Bus Fleet</h2>
+      <button class="btn secondary" onclick="printBuses()">Print Bus List</button>
+      <div class="table-wrapper">
+        <table id="busTable">
+          <thead>
+            <tr>
+              <th>Bus</th>
+              <th>Plate</th>
+              <th>Route</th>
+              <th>Driver</th>
+              <th>Conductor</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- LOG TABLE -->
+    <section class="panel">
+      <h2>Activity Logs</h2>
+      <button class="btn secondary" onclick="printLogs()">Print Logs</button>
+      <div class="table-wrapper">
+        <table id="logTable">
+          <thead>
+            <tr>
+              <th>Bus</th>
+              <th>Action</th>
+              <th>Time</th>
+              <th>Date</th>
+              <th>Remarks</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+</main>
+
+<!-- =============================== MODALS =============================== -->
+<div id="editBusModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeBusModal()">&times;</span>
+    <h2>Edit Bus</h2>
+    <div class="form-container">
+      <input type="hidden" id="editBusId">
+      <label>Bus Number</label>
+      <input id="editBusNumber" disabled>
+      <label>Plate Number</label>
+      <input id="editPlate">
+      <label>Route</label>
+      <input id="editRoute">
+      <label>Driver</label>
+      <input id="editDriver">
+      <label>Conductor</label>
+      <input id="editConductor">
+      <label>Status</label>
+      <select id="editStatus">
+        <option value="Active">Active</option>
+        <option value="On Route">On Route</option>
+        <option value="In Terminal">In Terminal</option>
+        <option value="Maintenance">Maintenance</option>
+      </select>
+    </div>
+    <button class="btn primary" onclick="saveBusEdit()">Save Changes</button>
+  </div>
+</div>
+
+<div id="editLogModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeLogModal()">&times;</span>
+    <h2>Edit Log</h2>
+    <div class="form-container">
+      <input type="hidden" id="editLogId">
+      <label>Bus Number</label>
+      <input id="editLogBus" disabled>
+      <label>Action</label>
+      <select id="editLogAction">
+        <option value="IN">IN</option>
+        <option value="OUT">OUT</option>
+      </select>
+      <label>Remarks</label>
+      <input id="editLogRemarks">
+    </div>
+    <button class="btn primary" onclick="saveLogEdit()">Save Changes</button>
+  </div>
+</div>
+
+<script>
+const api = ""; // leave blank if same server
+
+/* =============================== LOAD BUSES =============================== */
+async function loadBuses() {
+  const res = await fetch(api + "/api/buses");
+  const buses = await res.json();
+  const tbody = document.querySelector("#busTable tbody");
+  tbody.innerHTML = "";
+
+  let total = 0, onRoute = 0, inTerminal = 0, maintenance = 0, active = 0;
+
+  buses.forEach(b => {
+    total++;
+    if (b.status === "On Route") onRoute++;
+    else if (b.status === "In Terminal") inTerminal++;
+    else if (b.status === "Maintenance") maintenance++;
+    else active++;
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${b.bus_number}</td>
+        <td>${b.plate_number || ""}</td>
+        <td>${b.route || ""}</td>
+        <td>${b.driver || ""}</td>
+        <td>${b.conductor || ""}</td>
+        <td>${b.status || "Active"}</td>
+        <td>
+          <button class="edit-btn" onclick="editBus(${b.id}, '${b.bus_number}', '${b.plate_number || ""}', '${b.route || ""}', '${b.driver || ""}', '${b.conductor || ""}', '${b.status || "Active"}')">Edit</button>
+          <button class="delete-btn" onclick="deleteBus(${b.id})">Delete</button>
+        </td>
+      </tr>`;
+  });
+
+  document.getElementById("totalBuses").innerText = total;
+  document.getElementById("active").innerText = active;
+  document.getElementById("onRoute").innerText = onRoute;
+  document.getElementById("inTerminal").innerText = inTerminal;
+  document.getElementById("maintenance").innerText = maintenance;
+}
+
+/* =============================== ADD BUS =============================== */
+async function addBus() {
+  const bus = {
+    bus_number: document.getElementById("bus_number").value,
+    plate_number: document.getElementById("plate").value,
+    route: document.getElementById("route").value,
+    driver: document.getElementById("driver").value,
+    conductor: document.getElementById("conductor").value,
+    status: document.getElementById("status").value || "Active"
+  };
+  if (!bus.bus_number) { alert("Bus number is required"); return; }
+  await fetch(api + "/api/buses", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(bus)
+  });
+  clearBusForm();
+  loadBuses();
+}
+
+/* =============================== EDIT BUS MODAL =============================== */
+function editBus(id, bus_number, plate, route, driver, conductor, status) {
+  document.getElementById("editBusId").value = id;
+  document.getElementById("editBusNumber").value = bus_number;
+  document.getElementById("editPlate").value = plate;
+  document.getElementById("editRoute").value = route;
+  document.getElementById("editDriver").value = driver;
+  document.getElementById("editConductor").value = conductor;
+  document.getElementById("editStatus").value = status;
+  document.getElementById("editBusModal").style.display = "flex";
+}
+
+function closeBusModal() { document.getElementById("editBusModal").style.display = "none"; }
+
+async function saveBusEdit() {
+  const id = document.getElementById("editBusId").value;
+  const updatedBus = {
+    plate_number: document.getElementById("editPlate").value,
+    route: document.getElementById("editRoute").value,
+    driver: document.getElementById("editDriver").value,
+    conductor: document.getElementById("editConductor").value,
+    status: document.getElementById("editStatus").value
+  };
+  await fetch(api + "/api/buses/" + id, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updatedBus)
+  });
+  closeBusModal();
+  loadBuses();
+}
+
+/* =============================== DELETE BUS =============================== */
+async function deleteBus(id) {
+  if (!confirm("Delete this bus?")) return;
+  await fetch(api + "/api/buses/" + id, { method: "DELETE" });
+  loadBuses();
+}
+
+function clearBusForm() {
+  document.getElementById("bus_number").value = "";
+  document.getElementById("plate").value = "";
+  document.getElementById("route").value = "";
+  document.getElementById("driver").value = "";
+  document.getElementById("conductor").value = "";
+  document.getElementById("status").value = "Active";
+}
+
+/* =============================== LOAD LOGS =============================== */
+async function loadLogs() {
+  const res = await fetch(api + "/api/logs");
+  const logs = await res.json();
+  const tbody = document.querySelector("#logTable tbody");
+  tbody.innerHTML = "";
+
+  logs.forEach(l => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${l.bus_number}</td>
+        <td>${l.action}</td>
+        <td>${l.time}</td>
+        <td>${l.date}</td>
+        <td>${l.remarks || ""}</td>
+        <td>
+          <button class="edit-btn" onclick="editLog(${l.id}, '${l.bus_number}', '${l.action}', '${l.remarks || ""}')">Edit</button>
+          <button class="delete-btn" onclick="deleteLog(${l.id})">Delete</button>
+        </td>
+      </tr>`;
+  });
+}
+
+/* =============================== ADD LOG =============================== */
+async function addLog() {
+  const log = {
+    bus_number: document.getElementById("log_bus").value,
+    action: document.getElementById("action").value,
+    remarks: document.getElementById("remarks").value
+  };
+  if (!log.bus_number || !log.action) { alert("Bus number and action required"); return; }
+  await fetch(api + "/api/log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(log)
+  });
+  clearLogForm();
+  loadLogs();
+  loadBuses();
+}
+
+/* =============================== EDIT LOG MODAL =============================== */
+function editLog(id, bus_number, action, remarks) {
+  document.getElementById("editLogId").value = id;
+  document.getElementById("editLogBus").value = bus_number;
+  document.getElementById("editLogAction").value = action;
+  document.getElementById("editLogRemarks").value = remarks;
+  document.getElementById("editLogModal").style.display = "flex";
+}
+
+function closeLogModal() { document.getElementById("editLogModal").style.display = "none"; }
+
+async function saveLogEdit() {
+  const id = document.getElementById("editLogId").value;
+  const updatedLog = {
+    action: document.getElementById("editLogAction").value,
+    remarks: document.getElementById("editLogRemarks").value
+  };
+  await fetch(api + "/api/logs/" + id, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updatedLog)
+  });
+  closeLogModal();
+  loadLogs();
+}
+
+async function deleteLog(id) {
+  if (!confirm("Delete this log?")) return;
+  await fetch(api + "/api/logs/" + id, { method: "DELETE" });
+  loadLogs();
+  loadBuses();
+}
+
+function clearLogForm() {
+  document.getElementById("log_bus").value = "";
+  document.getElementById("action").value = "IN";
+  document.getElementById("remarks").value = "";
+}
+
+function searchBus() {
+  const input = document.getElementById("searchBus").value.toLowerCase();
+  document.querySelectorAll("#busTable tbody tr").forEach(row => {
+    row.style.display = row.children[0].innerText.toLowerCase().includes(input) ? "" : "none";
+  });
+}
+
+/* =============================== PRINT FUNCTIONS =============================== */
+function printBuses() {
+  const table = document.getElementById("busTable").outerHTML;
+  const printWindow = window.open("", "_blank");
+  printWindow.document.write(`
+    <html><head><title>Bus List</title>
+    <style>table{width:100%;border-collapse:collapse;}th,td{border:1px solid #000;padding:5px;}th{background:#f2f2f2;}</style>
+    </head><body><h2>Bus List</h2>${table}</body></html>`);
+  printWindow.document.close();
+  printWindow.print();
+}
+
+function printLogs() {
+  const table = document.getElementById("logTable").outerHTML;
+  const printWindow = window.open("", "_blank");
+  printWindow.document.write(`
+    <html><head><title>Bus Logs</title>
+    <style>table{width:100%;border-collapse:collapse;}th,td{border:1px solid #000;padding:5px;}th{background:#f2f2f2;}</style>
+    </head><body><h2>Bus Logs</h2>${table}</body></html>`);
+  printWindow.document.close();
+  printWindow.print();
+}
+
+/* =============================== INITIAL LOAD =============================== */
+loadBuses();
+loadLogs();
+</script>
+
+</body>
+</html>
